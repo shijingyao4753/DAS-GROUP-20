@@ -1,0 +1,149 @@
+---
+title: "Predicting Shelter Stay Duration"
+author: "Group 20"
+number-sections: true
+format: 
+  html:
+    embed-resources: true
+    code-tools: true
+  pdf: default
+editor_options: 
+  chunk_output_type: console
+execute:
+  echo: false
+  eval: true
+  warning: false
+  message: false
+  geometry: margin=1in,landscape
+header-includes:
+  - \usepackage{float}  
+  - \floatplacement{figure}{H}  
+  - \floatplacement{table}{H}  
+---
+
+```{r}
+#| label: libraries
+library(ggplot2)
+library(tidyverse)
+library(gt)
+library(patchwork)
+library(gridExtra)
+library(viridis)
+library(plotly)
+library(dplyr)
+library(GGally)
+library(lubridate)
+```
+
+# Introduction {#sec-Intro}
+
+Animal shelters play a critical role in managing stray and surrendered animals,yet the duration of an animal’s stay before reaching its final outcome varies significantly. This study analyzes data from a Dallas animal shelter to investigate which factors impact the number of days an animal remains in the shelter before an outcome is determined.
+
+To analyze this,we utilize descriptive statistics, data visualization, ANOVA, and a Generalized Linear Model (GLM) to assess the impact of animal type, intake type and other variables on shelter stay duration.
+
+```{r}
+#| label: data
+data <- read.csv("dataset20.csv")
+data$animal_type <- as.factor(data$animal_type)
+data$intake_type <- as.factor(data$intake_type)
+data$outcome_type <- as.factor(data$outcome_type)
+data$chip_status <- as.factor(data$chip_status)
+
+```
+
+# Exploratory data analysis
+
+We have a final dataset consisting of 1465 animals with the following key attributes:
+
+-   **Animal_type** The type of animal admitted to the shelter
+
+-   **Month** Month the animal was admitted, recorded numerically with January=1
+
+-   **Year** Year the animal was admitted to the shelter.
+
+-   **Intake_type** Reason for the animal being admitted to the shelter
+
+-   **Outcome_take** Final outcome for the admitted animal
+
+-   **Chip_Status** Did the animal have a microchip with owner information?
+
+-   **Time_at_Shelter** Days spent at the shelter between being admitted and the final outcome.
+
+
+
+```{r}
+#| label: fig-histogram1
+#| fig-cap: Distribution of Time Spent in Shelter 
+ggplot(data, aes(x = time_at_shelter)) +
+  geom_histogram(binwidth = 5, fill = "pink", alpha = 0.6, color = "black") +
+  theme_minimal() +
+  labs(title = "Distribution of Time Spent in Shelter", x = "Days in Shelter", y = "Count")
+
+```
+Firstly, figure 1 displays the distribution of time spent in shelter by animals and it shows right-skewed, indicating most animals stay for fewer than 10 days and small number of animals remain for extend periods.
+
+
+```{r}
+#| label: fig-boxplot1
+#| fig-cap: Time Spent in Shelter by Animal Type 
+ggplot(data, aes(x = animal_type, y = time_at_shelter, fill = animal_type)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Time Spent in Shelter by Animal Type", x = "Animal Type", y = "Days in Shelter")
+
+```
+The boxplot of Figure 2 visualizes the distribution of time spent in the shelter for different animal types. Dogs and cats occupy a large proportion of all animals in the shelter and they exhibit the widest range of shelter stay, with a considerable number of outliers indicating that some of them stay significantly longer than others. In contrast,birds and wildlife tend to have shorter and more consistent stay duration. However, The median stay duration across all animal types appears relatively low, indicating that most animals are processed efficiently, though certain cases, particularly among dogs and cats, experience extended stays.
+
+
+```{r}
+#| label: fig-boxplot2
+#| fig-cap: Time in Shelter by Intake Type
+ggplot(data, aes(x = intake_type, y = time_at_shelter, fill = intake_type)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Time in Shelter by Intake Type", x = "Intake Type", y = "Days in Shelter")
+
+```
+We also explore the distribution of time spent in the shelter based on different intake types shown as figure 3, howing notable variations in shelter stay duration.The boxplot shows that stray animals tend to stay in the shelter longer than those that are owner-surrendered or confiscated, with a wider spread and more outliers which means some cases remain in the shelter much than the majority.
+
+
+```{r}
+#| label: fig-boxplot3
+#| fig-cap: Time in Shelter by Chip Status
+ggplot(data, aes(x = chip_status, y = time_at_shelter, fill = chip_status)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Time in Shelter by Chip Status", x = "Chip Status", y = "Days in Shelter")
+
+```
+The relationship between chip status and shelter stay duration shows that animals with a scannable chip, no chip, or an unreadable chip all exhibit similar median shelter stays, so we assume that they might slightly affect the days in shelters.
+
+
+```{r}
+#| label: fig-boxplot4
+#| fig-cap: Distribution of Shelter Time by Month
+data$admission_date <- make_date(year = data$year, month = data$month)
+
+data$year_month <- format(data$admission_date, "%Y-%m")
+
+ggplot(data, aes(x = year_month, y = time_at_shelter)) +
+  geom_boxplot(fill = "lightblue") +
+  theme_minimal() +
+  labs(title = "Distribution of Shelter Time by Month",
+       x = "Admission Date (Year-Month)", 
+       y = "Time in Shelter (Days)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+
+```
+Additionally, we found that there is no significant difference in shelter stay duration across different admission months. The median shelter stay remains relatively stable throughout the observed period, with only slight variations.
+
+
+To further explore the impact of those variable on the time of animals staying at shelter, we draw a ANOVA table to validate it. The ANOVA results indicate that intake type (p \< 0.001) and outcome type (p \< 0.001) have a highly significant impact on shelter stay duration. This aligns with the boxplots we analyze before, where different intake methods (e.g.strays vs. owner surrenders) and outcomes (e.g. adoption vs. euthanasia) showed clear differences in stay duration. And animal type also has a moderate effect (p = 0.0322), which means there have some differences across species. However, chip status is not significant (p = 0.0740), supporting the earlier boxplot observation that having a chip does not strongly influence shelter stay duration.
+
+
+```{r}
+anova_model <- aov(time_at_shelter ~ animal_type + intake_type + outcome_type + chip_status,data = data)
+summary(anova_model)
+
+```
+To further quantify these relationships and predict shelter stay duration, we will now construct a Generalized Linear Model (GLM).
