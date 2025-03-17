@@ -80,6 +80,7 @@ ggplot(data, aes(x = time_at_shelter)) +
   labs(title = "Distribution of Time Spent in Shelter", x = "Days in Shelter", y = "Count")
 
 ```
+
 Firstly, figure 1 displays the distribution of time spent in shelter by animals and it shows right-skewed, indicating most animals stay for fewer than 10 days and small number of animals remain for extend periods.
 
 
