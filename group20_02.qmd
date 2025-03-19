@@ -1,0 +1,129 @@
+---
+title: "Analysis of Time Spent in Shelter"
+author: "Group 20"
+number-sections: true
+format: 
+  html:
+    embed-resources: true
+    code-tools: true
+  pdf: default
+editor_options: 
+  chunk_output_type: console
+execute:
+  echo: true
+  eval: true
+  warning: false
+  message: false
+---
+
+```{r}
+library(MASS)
+library(stats)
+library(ggplot2)
+```
+
+```{r}
+df <- read.csv("dataset20.csv")
+
+df$month <- as.numeric(df$month)
+df$season <- cut(df$month, breaks = c(2, 5, 8, 11, 12), 
+                 labels = c('Spring', 'Summer', 'Autumn', 'Winter'), 
+                 include.lowest = TRUE)
+df$season[df$month %in% c(12, 1, 2)] <- 'Winter'
+df$season <- factor(df$season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+```
+
+Spring is the breeding season for many animals, which may lead to a surge in the number of stray animals, putting shelters under immense pressure. As resources become strained and workloads increase, staff efficiency may decline, resulting in longer stays for animals in shelters.
+
+Summer is a peak travel season, and as people are away from home, the demand for pet adoption decreases. Additionally, the hot and humid environment increases the risk of diseases, further prolonging the stay of animals in shelters.
+
+In winter, the holiday season, including Christmas and New Year, may lead to an adoption surge, reducing the time animals spend in shelters.
+
+Given the impact of these seasonal factors on animal sheltering and adoption trends, we have decided to incorporate seasonal effects as an explanatory variable
+
+```{r}
+full_model <- glm.nb(time_at_shelter ~ animal_type + intake_type  + chip_status + season + year, data = df)
+```
+
+Outcome_type is an outcome variable rather than a factor influencing the length of stay in the shelter, and therefore should not be used as an explanatory variable. In this study, we use animal_type, chip_status, intake_type, season, and year as explanatory variables, while time_at_shelter serves as the outcome variable to construct a negative binomial regression model.
+
+```{r}
+selected_model1 <- step(full_model, direction = "backward", trace = TRUE)
+```
+
+To select the most appropriate explanatory variables, we employ a backward stepwise regression approach using the Akaike Information Criterion (AIC) as the evaluation standard. Specifically, we start with a full model that includes all candidate explanatory variables and iteratively remove variables with lower contributions to the model until we identify the optimal model with the lowest AIC. The results indicate that removing the season variable leads to a lower AIC value for the model. Therefore, we exclude the season variable to improve model fit.
+
+```{r}
+summary(selected_model1)
+```
+
+After removing the season variable, we reconstructed the negative binomial regression model. The results indicate that at a 95% confidence level, the p-value of the year variable is greater than 0.05, suggesting that it is not statistically significant. Additionally, based on the AIC evaluation, the model with the year variable has an AIC of 8353.1, while the model without it has an AIC of 8353.6, indicating that removing the year variable has a minimal impact on the model. Therefore, we decide to exclude the year variable from the explanatory variables.
+
+```{r}
+selected_model2 <- glm.nb(time_at_shelter ~ animal_type + intake_type  + chip_status,  data = df)
+summary(selected_model2)
+```
+
+Finally, we select animal_type, chip_status, and intake_type as explanatory variables, with time_at_shelter as the outcome variable to construct a negative binomial regression model.
+
+```{r}
+df$residuals <- residuals(selected_model2, type = "pearson") 
+df$fitted_values <- fitted(selected_model2)
+ggplot(df, aes(x = fitted_values, y = residuals)) +
+  geom_point(alpha = 0.6) + 
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +  
+  theme_minimal() +
+  labs(title = "Fitted Values vs. Pearson Residuals",
+       x = "Fitted Values",
+       y = "Pearson Residuals")
+```
+
+The plot shows some points with Pearson Residuals \> 6, indicating the possible presence of outliers in the data. These outliers may have a significant impact on the model, requiring further investigation to determine whether any adjustments or modifications to the model are necessary.
+
+```{r}
+plot(cooks.distance(selected_model2), type="h",
+     main="Cook's Distance", ylab="Cook's Distance")
+abline(h = 1, col = "red", lty = 2)
+
+```
+
+The highest Cook's Distance in the plot appears to be less than 0.1, which is far below 1, indicating that there are no particularly severe high-influence points. However, some points still exhibit a relatively large influence. Therefore, in the subsequent steps, we will identify these high-influence points and attempt to remove the outliers before refitting the model to assess their impact.
+
+```{r}
+df_cleaned <- df[-which(cooks.distance(selected_model2) > 4 / nrow(df)), ]
+final_model <- glm.nb(time_at_shelter ~ animal_type + intake_type  + chip_status, data = df_cleaned)
+summary(final_model)
+```
+
+The results show that after removing the outliers, the refitted model has an AIC of 7642.4, which is 695.199 lower than the previous model's AIC, indicating an improvement in model fit.
+
+#The coefficients are temporarily unexplained
+
+```{r}
+df_cleaned$residuals <- residuals(final_model, type = "pearson") 
+df_cleaned$fitted_values <- fitted(final_model)
+ggplot(df_cleaned, aes(x = fitted_values, y = residuals)) +
+  geom_point(alpha = 0.6) + 
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +  
+  theme_minimal() +
+  labs(title = "Fitted Values vs. Pearson Residuals",
+       x = "Fitted Values",
+       y = "Pearson Residuals")
+```
+
+The Pearson residuals are distributed around 0 without any distinct U-shaped or V-shaped patterns, indicating that the model does not suffer from severe systematic bias and has a good overall fit.
+
+```{r}
+plot(cooks.distance(final_model), type="h",
+     main="Cook's Distance", ylab="Cook's Distance")
+abline(h = 1, col = "red", lty = 2)
+
+```
+
+Cook's Distance values are generally low, indicating that no single data point has an excessively large influence on the model, ensuring stable model fitting.
+
+```{r}
+deviance(final_model) / df.residual(final_model)
+```
+
+The calculated value of 1.17089 is slightly greater than 1, indicating a mild degree of overdispersion in the data. However, overall, the model fits well and can still accurately describe the data distribution.
