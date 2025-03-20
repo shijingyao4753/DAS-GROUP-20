@@ -107,6 +107,8 @@ intake_type = STRAY also has a significant effect on shelter stay duration (p < 
 chip_status = SCAN NO CHIP is not statistically significant at the 95% confidence level (p = 0.068), indicating that the shelter stay duration of animals without a chip does not significantly differ from that of the baseline category (SCAN CHIP).
 chip_status = UNABLE TO SCAN has a significant impact on shelter stay duration (p = 0.0004). With other variables held constant, animals whose chips cannot be scanned have a stay duration of only exp(-0.66838) = 0.51 of the baseline category (SCAN CHIP), meaning their stay is approximately 51% of the baseline category.
 
+# Assessing model fit
+
 ```{r}
 df_cleaned$residuals <- residuals(final_model, type = "pearson") 
 df_cleaned$fitted_values <- fitted(final_model)
@@ -135,3 +137,19 @@ deviance(final_model) / df.residual(final_model)
 ```
 
 The calculated value of 1.17089 is slightly greater than 1, indicating a mild degree of overdispersion in the data. However, overall, the model fits well and can still accurately describe the data distribution.
+
+# Conclusion
+
+This study analyzed factors affecting the shelter stay duration of animals using data from a Dallas animal shelter. Through exploratory data analysis and statistical modeling, we found that intake type and animal type significantly influence shelter stay duration, while chip status has a limited impact.
+
+The final negative binomial regression model included animal type, intake type, and chip status as explanatory variables. After removing outliers, the model's AIC decreased by 695.199, indicating an improved fit.
+
+Key findings:
+
+-   Dogs stay **1.23 times longer** in the shelter than cats.
+
+-   Stray animals and owner-surrendered animals stay shorter than confiscated animals (56% and 39% of the baseline category, respectively).
+
+-   Chip status generally does not significantly impact stay duration, except for "unable to scan" cases, where animals had 51% of the baseline stay duration.
+
+The Pearson residuals analysis showed no severe systematic bias, and Cook's Distance analysis confirmed model stability. The slightly over dispersed data (1.17089 \> 1) suggests a good model fit.
