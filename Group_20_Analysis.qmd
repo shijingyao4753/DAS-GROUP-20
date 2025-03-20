@@ -1,0 +1,285 @@
+---
+title: "Predicting Shelter Stay Duration"
+author: "Group 20"
+number-sections: true
+format: 
+  html:
+    embed-resources: true
+    code-tools: true
+  pdf: default
+editor_options: 
+  chunk_output_type: console
+execute:
+  echo: false
+  eval: true
+  warning: false
+  message: false
+  geometry: margin=1in,landscape
+header-includes:
+  - \usepackage{float}  
+  - \floatplacement{figure}{H}  
+  - \floatplacement{table}{H}  
+---
+
+```{r}
+#| label: libraries
+library(ggplot2)
+library(tidyverse)
+library(gt)
+library(patchwork)
+library(gridExtra)
+library(viridis)
+library(plotly)
+library(dplyr)
+library(GGally)
+library(lubridate)
+library(MASS)
+library(stats)
+```
+
+# Introduction {#sec-Intro}
+
+Animal shelters play a critical role in managing stray and surrendered animals,yet the duration of an animal’s stay before reaching its final outcome varies significantly. This study analyzes data from a Dallas animal shelter to investigate which factors impact the number of days an animal remains in the shelter before an outcome is determined.
+
+To analyze this,we utilize descriptive statistics, data visualization, ANOVA, and a Generalized Linear Model (GLM) to assess the impact of animal type, intake type and other variables on shelter stay duration.
+
+```{r}
+#| label: data
+data <- read.csv("dataset20.csv")
+data$animal_type <- as.factor(data$animal_type)
+data$intake_type <- as.factor(data$intake_type)
+data$outcome_type <- as.factor(data$outcome_type)
+data$chip_status <- as.factor(data$chip_status)
+data$season <- cut(data$month, breaks = c(2, 5, 8, 11, 12), 
+                 labels = c('Spring', 'Summer', 'Autumn', 'Winter'), 
+                 include.lowest = TRUE)
+data$season[data$month %in% c(12, 1, 2)] <- 'Winter'
+data$season <- factor(data$season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+
+```
+
+# Exploratory data analysis
+
+We have a final dataset consisting of 1465 animals with the following key attributes:
+
+-   **Animal_type** The type of animal admitted to the shelter
+
+-   **Month** Month the animal was admitted, recorded numerically with January=1
+
+-   **Year** Year the animal was admitted to the shelter.
+
+-   **Intake_type** Reason for the animal being admitted to the shelter
+
+-   **Outcome_take** Final outcome for the admitted animal
+
+-   **Chip_Status** Did the animal have a microchip with owner information?
+
+-   **Time_at_Shelter** Days spent at the shelter between being admitted and the final outcome.
+
+-   **Season** Season the animal was admitted
+
+
+```{r}
+#| label: fig-histogram1
+#| fig-cap: Distribution of Time Spent in Shelter 
+ggplot(data, aes(x = time_at_shelter)) +
+  geom_histogram(binwidth = 5, fill = "pink", alpha = 0.6, color = "black") +
+  theme_minimal() +
+  labs(title = "Distribution of Time Spent in Shelter", x = "Days in Shelter", y = "Count")
+
+```
+
+Firstly, figure 1 displays the distribution of time spent in shelter by animals and it shows right-skewed, indicating most animals stay for fewer than 10 days and small number of animals remain for extend periods.
+
+
+```{r}
+#| label: fig-boxplot1
+#| fig-cap: Time Spent in Shelter by Animal Type 
+ggplot(data, aes(x = animal_type, y = time_at_shelter, fill = animal_type)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Time Spent in Shelter by Animal Type", x = "Animal Type", y = "Days in Shelter")
+
+```
+The boxplot of Figure 2 visualizes the distribution of time spent in the shelter for different animal types. Dogs and cats occupy a large proportion of all animals in the shelter and they exhibit the widest range of shelter stay, with a considerable number of outliers indicating that some of them stay significantly longer than others. In contrast,birds and wildlife tend to have shorter and more consistent stay duration. However, The median stay duration across all animal types appears relatively low, indicating that most animals are processed efficiently, though certain cases, particularly among dogs and cats, experience extended stays.
+
+
+```{r}
+#| label: fig-boxplot2
+#| fig-cap: Time in Shelter by Intake Type
+ggplot(data, aes(x = intake_type, y = time_at_shelter, fill = intake_type)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Time in Shelter by Intake Type", x = "Intake Type", y = "Days in Shelter")
+
+```
+We also explore the distribution of time spent in the shelter based on different intake types shown as figure 3, howing notable variations in shelter stay duration.The boxplot shows that stray animals tend to stay in the shelter longer than those that are owner-surrendered or confiscated, with a wider spread and more outliers which means some cases remain in the shelter much than the majority.
+
+
+```{r}
+#| label: fig-boxplot3
+#| fig-cap: Time in Shelter by Chip Status
+ggplot(data, aes(x = chip_status, y = time_at_shelter, fill = chip_status)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Time in Shelter by Chip Status", x = "Chip Status", y = "Days in Shelter")
+
+```
+The relationship between chip status and shelter stay duration shows that animals with a scannable chip, no chip, or an unreadable chip all exhibit similar median shelter stays, so we assume that they might slightly affect the days in shelters.
+
+
+```{r}
+#| label: fig-boxplot4
+#| fig-cap: Distribution of Shelter Time by Month
+data$admission_date <- make_date(year = data$year, month = data$month)
+
+data$year_month <- format(data$admission_date, "%Y-%m")
+
+ggplot(data, aes(x = year_month, y = time_at_shelter)) +
+  geom_boxplot(fill = "lightblue") +
+  theme_minimal() +
+  labs(title = "Distribution of Shelter Time by Month",
+       x = "Admission Date (Year-Month)", 
+       y = "Time in Shelter (Days)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+
+```
+Additionally, we found that there is no significant difference in shelter stay duration across different admission months. The median shelter stay remains relatively stable throughout the observed period, with only slight variations.
+
+Also, animals spend slightly more time in shelter in winter than other season and there is no apparent different median among all seasons from the figure 6.
+```{r}
+#| label: fig-boxplot5
+#| fig-cap: Time in Shelter by Season
+ggplot(data, aes(x = season, y = time_at_shelter, fill = season)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Time in Shelter by season", x = "Season", y = "Days in Shelter")
+
+```
+
+To further explore the impact of those variable on the time of animals staying at shelter, we draw a ANOVA table to validate it. The ANOVA results indicate that intake type (p \< 0.001) and outcome type (p \< 0.001) have a highly significant impact on shelter stay duration. This aligns with the boxplots we analyze before, where different intake methods (e.g.strays vs. owner surrenders) and outcomes (e.g. adoption vs. euthanasia) showed clear differences in stay duration. And animal type also has a moderate effect (p = 0.0322), which means there have some differences across species. However, chip status is not significant (p = 0.0740), supporting the earlier boxplot observation that having a chip does not strongly influence shelter stay duration.
+
+
+```{r}
+anova_model <- aov(time_at_shelter ~ animal_type + intake_type + outcome_type + chip_status,data = data)
+summary(anova_model)
+
+```
+To further quantify these relationships and predict shelter stay duration, we will now construct a Generalized Linear Model (GLM).
+
+# Modeling Framework {#sec-Model}
+
+```{r}
+df <- read.csv("dataset20.csv")
+df$month <- as.numeric(df$month)
+df$season <- cut(df$month, breaks = c(2, 5, 8, 11, 12), 
+                 labels = c('Spring', 'Summer', 'Autumn', 'Winter'), 
+                 include.lowest = TRUE)
+df$season[df$month %in% c(12, 1, 2)] <- 'Winter'
+df$season <- factor(df$season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+```
+
+Spring is the breeding season for many animals, which may lead to a surge in the number of stray animals, putting shelters under immense pressure. As resources become strained and workloads increase, staff efficiency may decline, resulting in longer stays for animals in shelters.
+
+Summer is a peak travel season, and as people are away from home, the demand for pet adoption decreases. Additionally, the hot and humid environment increases the risk of diseases, further prolonging the stay of animals in shelters.
+
+In winter, the holiday season, including Christmas and New Year, may lead to an adoption surge, reducing the time animals spend in shelters.
+
+Given the impact of these seasonal factors on animal sheltering and adoption trends, we have decided to incorporate seasonal effects as an explanatory variable
+
+```{r}
+full_model <- glm.nb(time_at_shelter ~ animal_type + intake_type  + chip_status + season + year, data = df)
+```
+
+Outcome_type is an outcome variable rather than a factor influencing the length of stay in the shelter, and therefore should not be used as an explanatory variable. In this study, we use animal_type, chip_status, intake_type, season, and year as explanatory variables, while time_at_shelter serves as the outcome variable to construct a negative binomial regression model.
+
+```{r}
+selected_model1 <- step(full_model, direction = "backward", trace = TRUE)
+```
+
+To select the most appropriate explanatory variables, we employ a backward stepwise regression approach using the Akaike Information Criterion (AIC) as the evaluation standard. Specifically, we start with a full model that includes all candidate explanatory variables and iteratively remove variables with lower contributions to the model until we identify the optimal model with the lowest AIC. The results indicate that removing the season variable leads to a lower AIC value for the model. Therefore, we exclude the season variable to improve model fit.
+
+```{r}
+summary(selected_model1)
+```
+
+After removing the season variable, we reconstructed the negative binomial regression model. The results indicate that at a 95% confidence level, the p-value of the year variable is greater than 0.05, suggesting that it is not statistically significant. Additionally, based on the AIC evaluation, the model with the year variable has an AIC of 8353.1, while the model without it has an AIC of 8353.6, indicating that removing the year variable has a minimal impact on the model. Therefore, we decide to exclude the year variable from the explanatory variables.
+
+```{r}
+selected_model2 <- glm.nb(time_at_shelter ~ animal_type + intake_type  + chip_status,  data = df)
+summary(selected_model2)
+```
+
+Finally, we select animal_type, chip_status, and intake_type as explanatory variables, with time_at_shelter as the outcome variable to construct a negative binomial regression model.
+
+```{r}
+df$residuals <- residuals(selected_model2, type = "pearson") 
+df$fitted_values <- fitted(selected_model2)
+ggplot(df, aes(x = fitted_values, y = residuals)) +
+  geom_point(alpha = 0.6) + 
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +  
+  theme_minimal() +
+  labs(title = "Fitted Values vs. Pearson Residuals",
+       x = "Fitted Values",
+       y = "Pearson Residuals")
+```
+
+The plot shows some points with Pearson Residuals \> 6, indicating the possible presence of outliers in the data. These outliers may have a significant impact on the model, requiring further investigation to determine whether any adjustments or modifications to the model are necessary.
+
+```{r}
+plot(cooks.distance(selected_model2), type="h",
+     main="Cook's Distance", ylab="Cook's Distance")
+abline(h = 1, col = "red", lty = 2)
+
+```
+
+The highest Cook's Distance in the plot appears to be less than 0.1, which is far below 1, indicating that there are no particularly severe high-influence points. However, some points still exhibit a relatively large influence. Therefore, in the subsequent steps, we will identify these high-influence points and attempt to remove the outliers before refitting the model to assess their impact.
+
+```{r}
+df_cleaned <- df[-which(cooks.distance(selected_model2) > 4 / nrow(df)), ]
+final_model <- glm.nb(time_at_shelter ~ animal_type + intake_type  + chip_status, data = df_cleaned)
+summary(final_model)
+```
+
+The results show that after removing the outliers, the refitted model has an AIC of 7642.4, which is 695.199 lower than the previous model's AIC, indicating an improvement in model fit.
+
+When all categorical variables are set to their baseline categories (animal_type = cat, intake_type = confiscated, chip_status = scan chip), the model's log-predicted value is 2.01893. Thus, the estimated shelter stay for the baseline group (cats) is approximately 7.52 days.
+
+The coefficient for animal_type = DOG is 0.20473, indicating that with other variables held constant, dogs stay longer in the shelter compared to the baseline category (cats), with an estimated increase of approximately exp(0.20473) ≈ 1.23 times. Additionally, animal_type = WILDLIFE is not statistically significant at the 95% confidence level, suggesting that the shelter stay duration for wildlife does not significantly differ from that of the baseline category (cats)
+
+intake_type = OWNER SURRENDER has a significant impact on shelter stay duration (p < 0.001). With other variables held constant, animals surrendered by their owners stay in the shelter for a shorter duration compared to the baseline category (confiscated), with a stay duration of exp(-0.93785) = 39% of the baseline category.
+intake_type = STRAY also has a significant effect on shelter stay duration (p < 0.001). With other variables held constant, stray animals stay in the shelter for exp(-0.57653) = 56% of the baseline category (confiscated).
+
+chip_status = SCAN NO CHIP is not statistically significant at the 95% confidence level (p = 0.068), indicating that the shelter stay duration of animals without a chip does not significantly differ from that of the baseline category (SCAN CHIP).
+chip_status = UNABLE TO SCAN has a significant impact on shelter stay duration (p = 0.0004). With other variables held constant, animals whose chips cannot be scanned have a stay duration of only exp(-0.66838) = 0.51 of the baseline category (SCAN CHIP), meaning their stay is approximately 51% of the baseline category.
+
+```{r}
+df_cleaned$residuals <- residuals(final_model, type = "pearson") 
+df_cleaned$fitted_values <- fitted(final_model)
+ggplot(df_cleaned, aes(x = fitted_values, y = residuals)) +
+  geom_point(alpha = 0.6) + 
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +  
+  theme_minimal() +
+  labs(title = "Fitted Values vs. Pearson Residuals",
+       x = "Fitted Values",
+       y = "Pearson Residuals")
+```
+
+The Pearson residuals are distributed around 0 without any distinct U-shaped or V-shaped patterns, indicating that the model does not suffer from severe systematic bias and has a good overall fit.
+
+```{r}
+plot(cooks.distance(final_model), type="h",
+     main="Cook's Distance", ylab="Cook's Distance")
+abline(h = 1, col = "red", lty = 2)
+
+```
+
+Cook's Distance values are generally low, indicating that no single data point has an excessively large influence on the model, ensuring stable model fitting.
+
+```{r}
+deviance(final_model) / df.residual(final_model)
+```
+
+The calculated value of 1.17089 is slightly greater than 1, indicating a mild degree of overdispersion in the data. However, overall, the model fits well and can still accurately describe the data distribution.
+
+
