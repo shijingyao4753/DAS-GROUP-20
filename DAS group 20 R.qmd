@@ -10,7 +10,7 @@ format:
 editor_options: 
   chunk_output_type: console
 execute:
-  echo: false
+  echo: true
   eval: true
   warning: false
   message: false
@@ -43,10 +43,13 @@ To analyze this,we utilize descriptive statistics, data visualization, ANOVA, an
 
 ```{r}
 #| label: data
+# import the data
 data <- read.csv("dataset20.csv")
+# transform the type of variables
 data$animal_type <- as.factor(data$animal_type)
 data$intake_type <- as.factor(data$intake_type)
 data$outcome_type <- as.factor(data$outcome_type)
+data$chip_status <-
 as.factor(data$chip_status)
 data$season <- cut(data$month, breaks = c(2, 5, 8, 11, 12), 
                  labels = c('Spring', 'Summer', 'Autumn', 'Winter'), 
