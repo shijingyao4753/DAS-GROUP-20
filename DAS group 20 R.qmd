@@ -47,8 +47,17 @@ data <- read.csv("dataset20.csv")
 data$animal_type <- as.factor(data$animal_type)
 data$intake_type <- as.factor(data$intake_type)
 data$outcome_type <- as.factor(data$outcome_type)
+<<<<<<< Updated upstream
 data$chip_status <- as.factor(data$chip_status)
 
+=======
+as.factor(data$chip_status)
+data$season <- cut(data$month, breaks = c(2, 5, 8, 11, 12), 
+                 labels = c('Spring', 'Summer', 'Autumn', 'Winter'), 
+                 include.lowest = TRUE)
+data$season[data$month %in% c(12, 1, 2)] <- 'Winter'
+data$season <- factor(data$season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+>>>>>>> Stashed changes
 ```
 
 # Exploratory data analysis
@@ -148,3 +157,17 @@ summary(anova_model)
 
 ```
 To further quantify these relationships and predict shelter stay duration, we will now construct a Generalized Linear Model (GLM).
+<<<<<<< Updated upstream
+=======
+
+Also, animals spend slightly more time in shelter in winter than other season and there is no apparent different median among all seasons from the figure 6.
+```{r}
+#| label: fig-boxplot5
+#| fig-cap: Time in Shelter by Season
+ggplot(data, aes(x = season, y = time_at_shelter, fill = season)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Time in Shelter by season", x = "Season", y = "Days in Shelter")
+
+```
+>>>>>>> Stashed changes
