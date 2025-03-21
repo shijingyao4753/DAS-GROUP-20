@@ -60,7 +60,7 @@ data$season <- factor(data$season, levels = c("Spring", "Summer", "Autumn", "Win
 
 # Exploratory data analysis
 
-We have a final dataset consisting of 1465 animals with the following key attributes:
+We have a final dataset consisting of 1405 animals with the following key attributes:
 
 -   **Animal_type** The type of animal admitted to the shelter
 
@@ -114,7 +114,7 @@ ggplot(data, aes(x = intake_type, y = time_at_shelter, fill = intake_type)) +
   labs(title = "Time in Shelter by Intake Type", x = "Intake Type", y = "Days in Shelter")
 
 ```
-We also explore the distribution of time spent in the shelter based on different intake types shown as figure 3, howing notable variations in shelter stay duration.The boxplot shows that stray animals tend to stay in the shelter longer than those that are owner-surrendered or confiscated, with a wider spread and more outliers which means some cases remain in the shelter much than the majority.
+We also explore the distribution of time spent in the shelter based on different intake types, as shown in Figure 3, highlighting notable variations in shelter stay duration. The boxplot indicates that confiscated animals tend to stay in the shelter longer than those that are owner-surrendered or stray. Additionally, stray animals exhibit a wider spread and more outliers, suggesting that some cases remain in the shelter significantly longer than the majority.
 
 
 ```{r}
