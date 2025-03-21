@@ -47,17 +47,14 @@ data <- read.csv("dataset20.csv")
 data$animal_type <- as.factor(data$animal_type)
 data$intake_type <- as.factor(data$intake_type)
 data$outcome_type <- as.factor(data$outcome_type)
-<<<<<<< Updated upstream
 data$chip_status <- as.factor(data$chip_status)
-
-=======
 as.factor(data$chip_status)
 data$season <- cut(data$month, breaks = c(2, 5, 8, 11, 12), 
                  labels = c('Spring', 'Summer', 'Autumn', 'Winter'), 
                  include.lowest = TRUE)
 data$season[data$month %in% c(12, 1, 2)] <- 'Winter'
 data$season <- factor(data$season, levels = c("Spring", "Summer", "Autumn", "Winter"))
->>>>>>> Stashed changes
+
 ```
 
 # Exploratory data analysis
@@ -133,9 +130,7 @@ The relationship between chip status and shelter stay duration shows that animal
 #| label: fig-boxplot4
 #| fig-cap: Distribution of Shelter Time by Month
 data$admission_date <- make_date(year = data$year, month = data$month)
-
 data$year_month <- format(data$admission_date, "%Y-%m")
-
 ggplot(data, aes(x = year_month, y = time_at_shelter)) +
   geom_boxplot(fill = "lightblue") +
   theme_minimal() +
@@ -147,20 +142,8 @@ ggplot(data, aes(x = year_month, y = time_at_shelter)) +
 ```
 Additionally, we found that there is no significant difference in shelter stay duration across different admission months. The median shelter stay remains relatively stable throughout the observed period, with only slight variations.
 
-
-To further explore the impact of those variable on the time of animals staying at shelter, we draw a ANOVA table to validate it. The ANOVA results indicate that intake type (p \< 0.001) and outcome type (p \< 0.001) have a highly significant impact on shelter stay duration. This aligns with the boxplots we analyze before, where different intake methods (e.g.strays vs. owner surrenders) and outcomes (e.g. adoption vs. euthanasia) showed clear differences in stay duration. And animal type also has a moderate effect (p = 0.0322), which means there have some differences across species. However, chip status is not significant (p = 0.0740), supporting the earlier boxplot observation that having a chip does not strongly influence shelter stay duration.
-
-
-```{r}
-anova_model <- aov(time_at_shelter ~ animal_type + intake_type + outcome_type + chip_status,data = data)
-summary(anova_model)
-
-```
-To further quantify these relationships and predict shelter stay duration, we will now construct a Generalized Linear Model (GLM).
-<<<<<<< Updated upstream
-=======
-
 Also, animals spend slightly more time in shelter in winter than other season and there is no apparent different median among all seasons from the figure 6.
+
 ```{r}
 #| label: fig-boxplot5
 #| fig-cap: Time in Shelter by Season
@@ -170,4 +153,11 @@ ggplot(data, aes(x = season, y = time_at_shelter, fill = season)) +
   labs(title = "Time in Shelter by season", x = "Season", y = "Days in Shelter")
 
 ```
->>>>>>> Stashed changes
+To further explore the impact of those variable on the time of animals staying at shelter, we draw a ANOVA table to validate it. The ANOVA results indicate that intake type (p \< 0.001) and outcome type (p \< 0.001) have a highly significant impact on shelter stay duration. This aligns with the boxplots we analyze before, where different intake methods (e.g.strays vs. owner surrenders) and outcomes (e.g. adoption vs. euthanasia) showed clear differences in stay duration. And animal type also has a moderate effect (p = 0.0322), which means there have some differences across species. However, chip status is not significant (p = 0.0740), supporting the earlier boxplot observation that having a chip does not strongly influence shelter stay duration.
+
+```{r}
+anova_model <- aov(time_at_shelter ~ animal_type + intake_type + outcome_type + chip_status,data = data)
+summary(anova_model)
+
+```
+To further quantify these relationships and predict shelter stay duration, we will now construct a Generalized Linear Model (GLM).
