@@ -45,7 +45,7 @@ To analyze this,we utilize descriptive statistics, data visualization, ANOVA, an
 
 ```{r}
 #| label: data
-# import the data
+# The process of cleaning the data is reflected in the lines 264-267.
 df <- read.csv("dataset20.csv")
 
 # transform the type of variables
@@ -263,6 +263,8 @@ The highest Cook's Distance in the plot appears to be less than 0.1, which is fa
 ```{r}
 # Remove highly influential observations based on Cook's Distance
 df_cleaned <- df[-which(cooks.distance(selected_model2) > 4 / nrow(df)), ]
+# Write a cleaned dataset
+write.csv(df_cleaned, 'D:\\Glasgow\\DA\\Group Assignment 2\\dataset20_cleaned.csv')
 
 # Refit the model using cleaned data
 final_model <- glm.nb(time_at_shelter ~ animal_type + intake_type  + chip_status, data = df_cleaned)
