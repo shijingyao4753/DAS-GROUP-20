@@ -46,7 +46,7 @@ To analyze this,we utilize descriptive statistics, data visualization, ANOVA, an
 ```{r}
 #| label: data
 # The process of cleaning the data is reflected in the lines 264-267.
-df <- read.csv("dataset20.csv")
+df <- read.csv("dataset20_cleaned.csv")
 
 # transform the type of variables
 df$animal_type <- as.factor(df$animal_type)
